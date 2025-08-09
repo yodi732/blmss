@@ -150,7 +150,6 @@ try:
     else:
         print('Error : automatic installation is not supported.')
         print('Help : try "python3 -m pip install -r requirements.txt"')
-    else:
         print('PIP check pass')
 
 # Init-Load
