@@ -16,7 +16,7 @@ import email.header
 from .func_tool import *
 
 version_list = {
-    "r_ver": "unknown"
+    "r_ver": "unknown",
     "c_ver": "unknown"
 }
 
