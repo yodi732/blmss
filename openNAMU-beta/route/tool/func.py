@@ -15,6 +15,13 @@ import email.header
 
 from .func_tool import *
 
+# --- 추가: data 폴더 경로 상수 ---
+DATA_DIR = 'data'
+VERSION_PATH = os.path.join(DATA_DIR, 'version.json')
+
+# --- 추가: data 폴더 없으면 생성 ---
+os.makedirs(DATA_DIR, exist_ok=True)
+
 version_list = {
     "r_ver": "unknown",
     "c_ver": "unknown",
@@ -23,18 +30,17 @@ version_list = {
 
 # Init-Version
 version_data = {}
-version_file = 'version.json'
 
-if os.path.exists(version_file):
-    with open(version_file, encoding='utf8') as file_data:
-        version_data = json.load(file_data)
+# --- 수정: version.json 안전하게 읽기 ---
+if os.path.exists(VERSION_PATH):
+    try:
+        with open(VERSION_PATH, encoding='utf8') as file_data:
+            version_data = json.load(file_data)
+    except json.JSONDecodeError:
+        print("[WARN] version.json 손상됨. 기본값으로 복구합니다.")
+        version_data = {"version": "unknown", "build": "dev"}
 else:
-    # 파일이 없을 경우 기본 버전 정보 지정
-    version_data = {
-        "version": "unknown",
-        "build": "dev"
-    }
-
+    version_data = {"version": "unknown", "build": "dev"}
 print('Version : ' + version_list['r_ver'])
 print('DB set version : ' + version_list['c_ver'])
 print('Skin set version : ' + version_list['s_ver'])
