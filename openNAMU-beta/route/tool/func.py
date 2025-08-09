@@ -1,3 +1,42 @@
+import os
+import json
+
+DATA_DIR = 'data'
+VERSION_PATH = os.path.join(DATA_DIR, 'version.json')
+os.makedirs(DATA_DIR, exist_ok=True)
+
+# 실제 버전 정보 입력
+version_list = {
+    "r_ver": "1.0.0",
+    "c_ver": "1.0.0",
+    "s_ver": "1.0.0"
+}
+
+# 버전 파일 읽기
+try:
+    with open(VERSION_PATH, 'r', encoding='utf-8') as vf:
+        version_data = json.load(vf)
+except (FileNotFoundError, json.JSONDecodeError):
+    version_data = {"version": "unknown", "build": "dev"}
+
+# 현재 버전 정보 출력
+print('Version :', version_list['r_ver'])
+print('DB set version :', version_list['c_ver'])
+print('Skin set version :', version_list['s_ver'])
+
+# 버전이 다르면 업데이트
+if version_data.get('version') != version_list['r_ver']:
+    try:
+        with open(VERSION_PATH, 'w', encoding='utf-8') as vf:
+            json.dump({"version": version_list['r_ver']}, vf, ensure_ascii=False, indent=2)
+        print('version.json updated')
+    except OSError as e:
+        print('Warning: could not write version.json:', e)
+
+# Render 환경 안내
+print('Info: skipping runtime pip install. Ensure requirements.txt contains dependencies and redeploy.')
+
+
 
 # --- Render 안전성 강화 코드 ---
 import os, json
