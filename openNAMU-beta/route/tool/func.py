@@ -72,9 +72,9 @@ if data_up_date == 1:
         
         for exe_name in run_list:
             try:
-        print('Info: skipping runtime pip install. Ensure requirements.txt contains dependencies and redeploy.')
+                print('Info: skipping runtime pip install. Ensure requirements.txt contains dependencies and redeploy.')
             except Exception as e:
-        print(f"[WARN] Skipped runtime pip install: {e}")
+                print(f"[WARN] Skipped runtime pip install: {e}")
 
 # [INFO] 런타임 pip 설치 로직 제거 - Render 환경에서는 requirements.txt 사용
 print('Info: skipping runtime pip install. Ensure requirements.txt contains dependencies and redeploy.')
