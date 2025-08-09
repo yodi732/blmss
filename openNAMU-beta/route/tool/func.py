@@ -16,8 +16,18 @@ import email.header
 from .func_tool import *
 
 # Init-Version
-with open('version.json', encoding = 'utf8') as file_data:
-    version_list = json_loads(file_data.read())
+version_data = {}
+version_file = 'version.json'
+
+if os.path.exists(version_file):
+    with open(version_file, encoding='utf8') as file_data:
+        version_data = json.load(file_data)
+else:
+    # 파일이 없을 경우 기본 버전 정보 지정
+    version_data = {
+        "version": "unknown",
+        "build": "dev"
+    }
 
 print('Version : ' + version_list['r_ver'])
 print('DB set version : ' + version_list['c_ver'])
