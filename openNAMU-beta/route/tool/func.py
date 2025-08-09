@@ -15,6 +15,10 @@ import email.header
 
 from .func_tool import *
 
+version_list = {
+    "r_ver": "unknown"
+}
+
 # Init-Version
 version_data = {}
 version_file = 'version.json'
