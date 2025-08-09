@@ -1,3 +1,21 @@
+
+# --- Render 안전성 강화 코드 ---
+import os, json
+DATA_DIR = 'data'
+VERSION_PATH = os.path.join(DATA_DIR, 'version.json')
+os.makedirs(DATA_DIR, exist_ok=True)
+version_data = {}
+if os.path.exists(VERSION_PATH):
+    try:
+        with open(VERSION_PATH, 'r', encoding='utf-8') as f:
+            version_data = json.load(f)
+    except json.JSONDecodeError:
+        print('[WARN] version.json 손상됨, 기본값 사용')
+        version_data = {"version": "unknown", "build": "dev"}
+else:
+    version_data = {"version": "unknown", "build": "dev"}
+# -----------------------------
+
 # Init
 import os
 import sys
