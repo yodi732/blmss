@@ -5,3 +5,6 @@ markdown
 PyYAML
 requests
 diff-match-patch
+Pillow
+pymysql
+aiohttp
