@@ -72,16 +72,10 @@ if data_up_date == 1:
         
         for exe_name in run_list:
             try:
-                subprocess.check_call([exe_name, "-m", "pip", "install", "--upgrade", "--user", "-r", "requirements-optional.txt"])
-            except:
-                pass
-
-            try:
-                subprocess.check_call([exe_name, "-m", "pip", "install", "--upgrade", "--user", "-r", "requirements.txt"])
-                subprocess.Popen([exe_name] + sys.argv)
-                os._exit(0)
-            except:
-                pass
+# [INFO] 런타임 pip 설치 로직 제거 - Render 환경에서는 requirements.txt 사용
+print('Info: skipping runtime pip install. Ensure requirements.txt contains dependencies and redeploy.')
+# [INFO] 런타임 pip 설치 로직 제거 - Render 환경에서는 requirements.txt 사용
+print('Info: skipping runtime pip install. Ensure requirements.txt contains dependencies and redeploy.')
         else:
             print('Error : automatic installation is not supported.')
             print('Help : try "python3 -m pip install -r requirements.txt"')
