@@ -130,6 +130,8 @@ if data_up_date == 1:
         for exe_name in run_list:
             try:
                 print('Info: skipping runtime pip install. Ensure requirements.txt contains dependencies and redeploy.')
+            try:
+                pass  # 예외 처리 대상 코드
             except Exception as e:
                 print(f"[WARN] Skipped runtime pip install: {e}")
 
@@ -138,6 +140,8 @@ print('Info: skipping runtime pip install. Ensure requirements.txt contains depe
 # [INFO] 런타임 pip 설치 로직 제거 - Render 환경에서는 requirements.txt 사용
 try:
     pass
+    try:
+        pass  # 예외 처리 대상 코드
     except Exception as e:
             print('Error : automatic installation is not supported.')
             print('Help : try "python3 -m pip install -r requirements.txt"')
@@ -1742,6 +1746,8 @@ async def send_email(conn, who, title, data):
         smtp.quit()
 
         return 1
+    try:
+        pass  # 예외 처리 대상 코드
     except Exception as e:
         print('Error : email send error')
         print(e)
