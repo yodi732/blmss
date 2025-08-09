@@ -130,7 +130,13 @@ if data_up_date == 1:
         for exe_name in run_list:
             try:
                 print('Info: skipping runtime pip install. Ensure requirements.txt contains dependencies and redeploy.')
+                
+        for exe_name in run_list:
             try:
+                print('Info: skipping runtime pip install. Ensure requirements.txt contains dependencies and redeploy.')
+                pass  # 예외 처리 대상 코드
+            except Exception as e:
+                print(f"[WARN] Skipped runtime pip install: {e}")
                 pass  # 예외 처리 대상 코드
             except Exception as e:
                 print(f"[WARN] Skipped runtime pip install: {e}")
