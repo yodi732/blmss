@@ -4,3 +4,4 @@ flask-compress
 markdown
 PyYAML
 requests
+diff-match-patch
