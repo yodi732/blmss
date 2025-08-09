@@ -6,6 +6,8 @@ PyYAML
 requests
 diff-match-patch
 Pillow
-pymysql
 aiohttp
 hypercorn
+Flask>=2.0
+PyMySQL
+werkzeug
