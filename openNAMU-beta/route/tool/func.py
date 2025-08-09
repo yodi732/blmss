@@ -97,9 +97,8 @@ if data_up_date == 1:
 # [INFO] 런타임 pip 설치 로직 제거 - Render 환경에서는 requirements.txt 사용
 print('Info: skipping runtime pip install. Ensure requirements.txt contains dependencies and redeploy.')
 # [INFO] 런타임 pip 설치 로직 제거 - Render 환경에서는 requirements.txt 사용
-    try:
-        pass
-print('Info: skipping runtime pip install. Ensure requirements.txt contains dependencies and redeploy.')
+try:
+    pass
     except Exception as e:
             print('Error : automatic installation is not supported.')
             print('Help : try "python3 -m pip install -r requirements.txt"')
