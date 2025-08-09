@@ -21,7 +21,7 @@ if len(args) > 1:
         run_mode = ''
 
 # Init-Version
-with open('version.json', encoding = 'utf8') as file_data:
+with open(os.path.join(os.path.dirname(__file__), '../../version.json'), encoding='utf8') as file_data:
     version_list = json_loads(file_data.read())
 
 # Init-DB
