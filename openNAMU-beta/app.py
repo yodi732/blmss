@@ -21,8 +21,20 @@ if len(args) > 1:
         run_mode = ''
 
 # Init-Version
-with open(os.path.join(os.path.dirname(__file__), '../../version.json'), encoding='utf8') as file_data:
-    version_list = json_loads(file_data.read())
+version_data = {}
+version_file = 'version.json'
+
+if os.path.exists(version_file):
+    with open(version_file, encoding='utf8') as file_data:
+        version_data = json.load(file_data)
+else:
+    # 파일이 없을 경우 기본 버전 정보 지정
+    version_data = {
+        "version": "unknown",
+        "build": "dev"
+    }
+
+
 
 # Init-DB
 data_db_set = class_check_json()
