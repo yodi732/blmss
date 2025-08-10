@@ -21,7 +21,18 @@ if len(args) > 1:
         run_mode = ''
 
 # Init-Version
-with open('version.json', encoding = 'utf8') as file_data:
+import os
+# Safe load version.json
+if os.path.exists('version.json'):
+    try:
+        with open('version.json', encoding='utf-8') as file_data:
+            version_data = json.load(file_data)
+    except json.JSONDecodeError:
+        print('[WARN] version.json 손상됨. 기본값으로 복구합니다.')
+        version_data = {"version": "unknown", "build": "dev"}
+else:
+    print('[INFO] version.json 없음. 기본값 사용.')
+    version_data = {"version": "unknown", "build": "dev"}
     version_list = json_loads(file_data.read())
     
 # Init-DB
