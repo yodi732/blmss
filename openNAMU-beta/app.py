@@ -302,17 +302,20 @@ with get_db_connect(init_mode = True) as conn:
                     except Exception:
                         pass
 
-if isinstance(server_set_val, dict):
-    print(f"{server_set_val.get('display', '')} : {server_set_val}")
-else:
-    print(f"{server_set_val} : {server_set_val}")
+        if isinstance(server_set_val, dict):
+            print(f"{server_set_val.get('display', '')} : {server_set_val}")
+        else:
+            print(f"{server_set_val} : {server_set_val}")
 
-server_set[i] = server_set_val
+        server_set[i] = server_set_val
 
 for for_a in server_set:
     global_some_set_do('setup_' + for_a, server_set[for_a])
 
 ###
+
+    # Ensure golang_port exists to avoid KeyError when launching golang binary
+    server_set.setdefault('golang_port', '3001')
 
 if platform.system() == 'Linux':
     if platform.machine() in ["AMD64", "x86_64"]:
@@ -1077,6 +1080,3 @@ if __name__ == '__main__':
             restart_delay = min(max_delay, restart_delay * 2)
 
     terminate_golang()
-
-# golang_port 기본값 보장
-server_set.setdefault('golang_port', '3001')
