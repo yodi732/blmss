@@ -1042,6 +1042,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for = 1, x_proto = 1)
 if __name__ == '__main__':
     try:
     try:
+    try:
     if run_mode in ['dev']:
         app.run(host = server_set['host'], port = int(server_set['port']), use_reloader = False)
     else:
@@ -1052,6 +1053,9 @@ if __name__ == '__main__':
         print(f'[ERROR] Unhandled exception during startup: {e}')
         import time; time.sleep(3)
         asyncio.run(serve(app, config))
+    except Exception as e:
+        print(f'[ERROR] Unhandled exception during startup: {e}')
+        import time; time.sleep(3)
     except Exception as e:
         print(f'[ERROR] Unhandled exception during startup: {e}')
         import time; time.sleep(3)
