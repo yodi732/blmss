@@ -304,7 +304,7 @@ with get_db_connect(init_mode = True) as conn:
 
 print(f"{server_set_val.get('display', '')} : {server_set_val}")
 
-    server_set[i] = server_set_val
+server_set[i] = server_set_val
 
 for for_a in server_set:
     global_some_set_do('setup_' + for_a, server_set[for_a])
@@ -1040,36 +1040,9 @@ atexit.register(terminate_golang)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for = 1, x_proto = 1)
 
 if __name__ == '__main__':
-    import time
-    while True:
-        try:
-    import time
-    while True:
-        try:
-    try:
-    try:
-    try:
     if run_mode in ['dev']:
-        app.run(host = server_set['host'], port = int(server_set['port']), use_reloader = False)
+        app.run(host=server_set['host'], port=int(server_set['port']), use_reloader=False)
     else:
         config = Config()
-        config.bind = [server_set['host'] + ":" + server_set['port']]
-
-    except Exception as e:
-        print(f'[ERROR] Unhandled exception during startup: {e}')
-        import time; time.sleep(3)
+        config.bind = [f"{server_set['host']}:{server_set['port']}"]
         asyncio.run(serve(app, config))
-    except Exception as e:
-        print(f'[ERROR] Unhandled exception during startup: {e}')
-        import time; time.sleep(3)
-    except Exception as e:
-        print(f'[ERROR] Unhandled exception during startup: {e}')
-        import time; time.sleep(3)
-        except Exception as e:
-            print(f'[ERROR] Unhandled exception during runtime: {e}')
-            time.sleep(3)
-            print('[INFO] Restarting server...')
-        except Exception as e:
-            print(f'[ERROR] Unhandled exception during runtime: {e}')
-            time.sleep(3)
-            print('[INFO] Restarting server...')
