@@ -1745,8 +1745,6 @@ async def send_email(conn, who, title, data):
         smtp.quit()
 
         return 1
-    try:
-        pass  # 예외 처리 대상 코드
     except Exception as e:
         print('Error : email send error')
         print(e)
