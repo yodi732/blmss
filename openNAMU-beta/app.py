@@ -4,6 +4,8 @@ server_set_val.setdefault('host', '0.0.0.0')
 server_set_val.setdefault('port', 3000)
 server_set_val.setdefault('golangport', 3001)
 
+golang_process = None  # Golang disabled in this build (Render)
+
 download_url = None  # Safe default to avoid NameError
 
 # Init
@@ -254,20 +256,10 @@ with get_db_connect(init_mode = True) as conn:
     app.url_map.converters['regex'] = RegexConverter
 
     curs.execute(db_change('select data from other where name = "key"'))
-    row = curs.fetchone()
-    if row and row[0]:
-        app.secret_key = row[0]
-    else:
-        # generate temporary secret if missing
-        k = load_random_key()
-        app.secret_key = k
-        try:
-            curs.execute(db_change('insert into other (name, data, coverage) values ("key", ?, "")'), [k])
-        except Exception:
-            pass
+    sql_data = curs.fetchall()
+    app.secret_key = sql_data[0][0]
 
     # Init-DB_Data
-
     server_set = {}
     server_set_var = get_init_set_list()
     server_set_env = {
@@ -278,71 +270,48 @@ with get_db_connect(init_mode = True) as conn:
         'markup' : os.getenv('NAMU_MARKUP'),
         'encode' : os.getenv('NAMU_ENCRYPT')
     }
+    for i in server_set_var:
+        curs.execute(db_change('select data from other where name = ?'), [i])
+        server_set_val = curs.fetchall()
+        if server_set_val:
+            server_set_val = server_set_val[0][0]
+        elif server_set_env[i] != None:
+            server_set_val = server_set_env[i]
 
-    # Build server_set safely (don't modify while iterating)
-    for i, meta in server_set_var.items():
-        try:
-            curs.execute(db_change('select data from other where name = ?'), [i])
-            row = curs.fetchone()
-            if row and row[0] is not None:
-                server_set_val = row[0]
-            elif server_set_env.get(i) is not None:
-                server_set_val = server_set_env[i]
-                try:
-                    curs.execute(db_change('insert into other (name, data, coverage) values (?, ?, "")'), [i, server_set_env[i]])
-                except Exception:
-                    pass
+            curs.execute(db_change('insert into other (name, data, coverage) values (?, ?, "")'), [i, server_set_env[i]])
+        else:
+            if 'list' in server_set_var[i]:
+                print(server_set_var[i]['display'] + ' (' + server_set_var[i]['default'] + ') [' + ', '.join(server_set_var[i]['list']) + ']' + ' : ', end = '')
             else:
-                # prefer environment NAMU_<KEY> over default
+                # Non-interactive: prefer environment variable NAMU_<KEY>, then existing DB value, then default
                 env_name = 'NAMU_' + i.upper()
                 env_val = os.getenv(env_name)
                 if env_val is not None:
                     server_set_val = env_val
                 else:
-                    # fallback to default from meta if available
-                    server_set_val = meta.get('default') if isinstance(meta, dict) else ''
-
+                    # fallback to default defined in server_set_var
+                    server_set_val = server_set_var[i]['default']
+                # if select requirement, validate against list
+                if server_set_var[i].get('require') == 'select' and 'list' in server_set_var[i]:
+                    if server_set_val not in server_set_var[i]['list']:
+                        server_set_val = server_set_var[i]['default']
                 try:
                     curs.execute(db_change('insert into other (name, data, coverage) values (?, ?, "")'), [i, server_set_val])
                 except Exception:
+                    # if insert fails (maybe row exists), try update
                     try:
                         curs.execute(db_change('update other set data = ? where name = ?'), [server_set_val, i])
                     except Exception:
                         pass
 
-            # safe print (if server_set_val is dict, use .get())
-            if isinstance(server_set_val, dict):
-                try:
-                    display_val = server_set_val.get('display', '')
-                except Exception:
-                    display_val = str(server_set_val)
-            else:
-                display_val = server_set_val
+print(f"{server_set_val.get('display', '')} : {server_set_val}")
 
-            print(f"{display_val} : {server_set_val}")
+server_set[i] = server_set_val
 
-            server_set[i] = server_set_val
-        except Exception as _e:
-            print(f"[WARN] Error loading server_set key {i}: {_e}")
-            server_set[i] = meta.get('default') if isinstance(meta, dict) else ''
-
-    # Ensure keys expected later exist to avoid KeyError
-    server_set.setdefault('golang_port', '3001')
-    server_set.setdefault('host', '0.0.0.0')
-    server_set.setdefault('port', '3000')
-
-    # snapshot keys and propagate to global_some_set safely
-    for for_a in list(server_set.keys()):
-        global_some_set_do('setup_' + for_a, server_set[for_a])
+for for_a in server_set:
+    global_some_set_do('setup_' + for_a, server_set[for_a])
 
 ###
-
-    # Ensure golang_port exists to avoid KeyError when launching golang binary
-    server_set.setdefault('golang_port', '3001')
-    server_set['use_golang'] = False  # Force disable golang usage
-
-golang_process = None  # Disabled in Render; kept defined to avoid NameError in route defaults
-
 
 if platform.system() == 'Linux':
     if platform.machine() in ["AMD64", "x86_64"]:
@@ -357,7 +326,7 @@ else:
     else:
         cmd = [os.path.join(".", "route_go", "bin", "main.arm64.exe")]
 
-cmd += [server_set["golang_port"]]
+cmd += [server_set.get('golang_port', '3001')]
 if run_mode != '':
     cmd += [run_mode]
 
@@ -376,7 +345,7 @@ async def golang_process_check():
                 "ip" : "127.0.0.1"
             }
 
-            response = requests.post('http://localhost:' + server_set["golang_port"] + '/', data = json_dumps(other_set))
+            response = requests.post('http://localhost:' + server_set.get('golang_port', '3001') + '/', data = json_dumps(other_set))
             if response.status_code == 200:
                 print('Golang turn on')
                 break
@@ -384,9 +353,8 @@ async def golang_process_check():
             print('Wait golang...')
             time.sleep(1)
 
-    # Golang execution disabled for Render deployment (binary missing)
-    print('Skipping Golang execution: main.amd64.bin not found or disabled.')
-    # golang_process = subprocess.Popen(cmd)
+golang_process = None  # Golang disabled: subprocess call removed for Render deployment
+
 
 try:
     loop = asyncio.get_running_loop()
@@ -1053,25 +1021,12 @@ app.errorhandler(404)(main_func_error_404)
 
 def terminate_golang():
     global golang_process
+    # Golang disabled in this deployment; nothing to terminate.
     try:
         if golang_process is None:
             return
     except NameError:
         return
-
-    try:
-        if hasattr(golang_process, 'poll') and golang_process.poll() is None:
-            golang_process.terminate()
-            try:
-                golang_process.wait(timeout = 5)
-            except Exception:
-                try:
-                    golang_process.kill()
-                    golang_process.wait(timeout = 5)
-                except Exception:
-                    print('Golang process not terminated properly.')
-    except Exception as e:
-        print(f'[WARN] terminate_golang error: {e}')
 
 def signal_handler(signal, frame):
     terminate_golang()
