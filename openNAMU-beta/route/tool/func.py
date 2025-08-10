@@ -131,27 +131,9 @@ if data_up_date == 1:
             try:
                 print('Info: skipping runtime pip install. Ensure requirements.txt contains dependencies and redeploy.')
                 pass  # 예외 처리 대상 코드
-            except Exception as e:
-                print(f"[WARN] Skipped runtime pip install: {e}")
-                pass  # 예외 처리 대상 코드
-            except Exception as e:
-                print(f"[WARN] Skipped runtime pip install: {e}")
-
-# [INFO] 런타임 pip 설치 로직 제거 - Render 환경에서는 requirements.txt 사용
-print('Info: skipping runtime pip install. Ensure requirements.txt contains dependencies and redeploy.')
-# [INFO] 런타임 pip 설치 로직 제거 - Render 환경에서는 requirements.txt 사용
-try:
-    pass
-    try:
-        pass  # 예외 처리 대상 코드
-    except Exception as e:
-            print('Error : automatic installation is not supported.')
-            print('Help : try "python3 -m pip install -r requirements.txt"')
-    else:
-        print('Error : automatic installation is not supported.')
-        print('Help : try "python3 -m pip install -r requirements.txt"')
-        print('PIP check pass')
-
+            except Exception as _e:
+                print(f"[WARN] Skipped runtime pip install: {_e}")
+                pass
 # Init-Load
 from .func_render import class_do_render
 
@@ -387,12 +369,11 @@ class class_check_json:
                 normal_db_type = ['sqlite', 'mysql']
 
                 print('DB type (' + normal_db_type[0] + ') [' + ', '.join(normal_db_type) + '] : ', end = '')
-                import os
-try:
-    data_get = str(input())
-except EOFError:
-    print('[WARN] No input detected. Using default value.')
-    data_get = os.getenv('DEFAULT_SET_VALUE', '')
+                try:
+                    data_get = str(input())
+                except EOFError:
+                    print('[WARN] No input detected. Using DEFAULT_SET_VALUE.')
+                    data_get = os.getenv('DEFAULT_SET_VALUE', '')
                 if data_get == '' or not data_get in normal_db_type:
                     set_data['db_type'] = 'sqlite'
                 else:
@@ -407,12 +388,11 @@ except EOFError:
 
                 print('DB name (data) [' + ', '.join(all_src) + '] : ', end = '')
 
-                import os
-try:
-    data_get = str(input())
-except EOFError:
-    print('[WARN] No input detected. Using default value.')
-    data_get = os.getenv('DEFAULT_SET_VALUE', '')
+                try:
+                    data_get = str(input())
+                except EOFError:
+                    print('[WARN] No input detected. Using DEFAULT_SET_VALUE.')
+                    data_get = os.getenv('DEFAULT_SET_VALUE', '')
                 if data_get == '':
                     set_data['db'] = 'data'
                 else:
@@ -1757,8 +1737,6 @@ async def send_email(conn, who, title, data):
         smtp.quit()
 
         return 1
-    try:
-        pass  # 예외 처리 대상 코드
     except Exception as e:
         print('Error : email send error')
         print(e)
