@@ -20,19 +20,44 @@ if len(args) > 1:
     if not run_mode in ['dev']:
         run_mode = ''
 
-# Init-Version
-import os
-if os.path.exists('version.json'):
-    try:
-        with open('version.json', encoding='utf-8') as f:
-            version_list = json.load(f)
-    except json.JSONDecodeError:
-        print('[WARN] version.json 손상됨. 기본값으로 복구합니다.')
-        version_list = {"version": "unknown", "build": "dev"}
-else:
-    print('[INFO] version.json 없음. 기본값 사용.')
-    version_list = {"version": "unknown", "build": "dev"}
 
+# --- Safe version.json loader ---
+def load_version_info(path='version.json'):
+    DEFAULTS = {
+        "r_ver": "1.0.0",
+        "c_ver": "1.0.0",
+        "s_ver": "1.0.0",
+        "bin_link": ""  # if empty, binary download will be skipped
+    }
+
+    try:
+        if not os.path.exists(path):
+            # create a minimal version.json with defaults
+            try:
+                with open(path, 'w', encoding='utf8') as _vf:
+                    json.dump({ "r_ver": DEFAULTS["r_ver"], "c_ver": DEFAULTS["c_ver"], "s_ver": DEFAULTS["s_ver"] }, _vf, ensure_ascii=False, indent=2)
+                print(f"[INFO] Default {path} created.")
+            except Exception as _e:
+                print(f"[WARN] Could not create default {path}: {_e}")
+            return DEFAULTS.copy()
+        with open(path, 'r', encoding='utf8') as file_data:
+            try:
+                data = json.load(file_data)
+            except Exception as _e:
+                print(f"[WARN] Failed to parse {path}: {_e}. Using defaults.")
+                data = {}
+        out = DEFAULTS.copy()
+        for k in ('r_ver','c_ver','s_ver','bin_link'):
+            if k in data and data[k] is not None:
+                out[k] = str(data[k])
+        return out
+    except Exception as _e:
+        print(f"[ERROR] load_version_info error: {_e}")
+        return DEFAULTS.copy()
+# --- end loader ---
+
+version_list = load_version_info()
+    
 # Init-DB
 data_db_set = class_check_json()
 do_db_set(data_db_set)
@@ -65,7 +90,29 @@ with get_db_connect(init_mode = True) as conn:
                 print('Remove Old Binary')
                 os.remove(local_file_path)
 
-            download_url = version_list["bin_link"] + file_name
+            bin_link = version_list.get('bin_link', '')
+            if not bin_link:
+                print('[WARN] bin_link not set in version.json. Skipping binary download.')
+            else:
+                download_url = bin_link + file_name
+                print('Download New Binary File')
+                try:
+                    response = requests.get(download_url, stream=True, timeout=30)
+                except Exception as _e:
+                    print(f'[WARN] Failed to download binary from {download_url}: {_e}')
+                else:
+                    if response.status_code == 200:
+                        try:
+                            os.makedirs(os.path.dirname(local_file_path), exist_ok=True)
+                            with open(local_file_path, 'wb') as file:
+                                for chunk in response.iter_content(chunk_size=8192):
+                                    if chunk:
+                                        file.write(chunk)
+                            print('Complete Download')
+                        except Exception as _e:
+                            print(f'[WARN] Failed to write binary file: {_e}')
+                    else:
+                        print(f'[WARN] Binary download failed with HTTP status {response.status_code}')
 
             print('Download New Binary File')
             response = requests.get(download_url, stream = True)
@@ -233,16 +280,26 @@ with get_db_connect(init_mode = True) as conn:
             if 'list' in server_set_var[i]:
                 print(server_set_var[i]['display'] + ' (' + server_set_var[i]['default'] + ') [' + ', '.join(server_set_var[i]['list']) + ']' + ' : ', end = '')
             else:
-                print(server_set_var[i]['display'] + ' (' + server_set_var[i]['default'] + ') : ', end = '')
-
-            server_set_val = input()
-            if server_set_val == '':
-                server_set_val = server_set_var[i]['default']
-            elif server_set_var[i]['require'] == 'select':
-                if not server_set_val in server_set_var[i]['list']:
+                # Non-interactive: prefer environment variable NAMU_<KEY>, then existing DB value, then default
+                env_name = 'NAMU_' + i.upper()
+                env_val = os.getenv(env_name)
+                if env_val is not None:
+                    server_set_val = env_val
+                else:
+                    # fallback to default defined in server_set_var
                     server_set_val = server_set_var[i]['default']
-
-            curs.execute(db_change('insert into other (name, data, coverage) values (?, ?, "")'), [i, server_set_val])
+                # if select requirement, validate against list
+                if server_set_var[i].get('require') == 'select' and 'list' in server_set_var[i]:
+                    if server_set_val not in server_set_var[i]['list']:
+                        server_set_val = server_set_var[i]['default']
+                try:
+                    curs.execute(db_change('insert into other (name, data, coverage) values (?, ?, "")'), [i, server_set_val])
+                except Exception:
+                    # if insert fails (maybe row exists), try update
+                    try:
+                        curs.execute(db_change('update other set data = ? where name = ?'), [server_set_val, i])
+                    except Exception:
+                        pass
 
         print(server_set_var[i]['display'] + ' : ' + server_set_val)
 
