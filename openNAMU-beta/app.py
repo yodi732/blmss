@@ -304,7 +304,7 @@ with get_db_connect(init_mode = True) as conn:
 
 print(f"{server_set_val.get('display', '')} : {server_set_val}")
 
-        server_set[i] = server_set_val
+    server_set[i] = server_set_val
 
 for for_a in server_set:
     global_some_set_do('setup_' + for_a, server_set[for_a])
