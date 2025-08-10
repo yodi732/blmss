@@ -1077,3 +1077,6 @@ if __name__ == '__main__':
             restart_delay = min(max_delay, restart_delay * 2)
 
     terminate_golang()
+
+# golang_port 기본값 보장
+server_set.setdefault('golang_port', '3001')
