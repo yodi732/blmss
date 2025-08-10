@@ -1,3 +1,5 @@
+download_url = None  # Safe default to avoid NameError
+
 import os
 import json
 
