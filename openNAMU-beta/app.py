@@ -1040,9 +1040,37 @@ atexit.register(terminate_golang)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for = 1, x_proto = 1)
 
 if __name__ == '__main__':
-    if run_mode in ['dev']:
-        app.run(host=server_set['host'], port=int(server_set['port']), use_reloader=False)
-    else:
-        config = Config()
-        config.bind = [f"{server_set['host']}:{server_set['port']}"]
-        asyncio.run(serve(app, config))
+    import time
+    import traceback
+
+    restart_delay = 1      # 처음 재시작 대기 시간(초)
+    max_delay = 60         # 최대 대기 시간(초)
+
+    while True:
+        try:
+            if run_mode in ['dev']:
+                print('[INFO] Flask 개발 서버 시작...')
+                app.run(host=server_set['host'], port=int(server_set['port']), use_reloader=False)
+            else:
+                print('[INFO] Hypercorn 프로덕션 서버 시작...')
+                config = Config()
+                config.bind = [f"{server_set['host']}:{server_set['port']}"]
+                asyncio.run(serve(app, config))
+
+            print('[INFO] 서버가 정상적으로 종료되었습니다.')
+            break
+
+        except KeyboardInterrupt:
+            print('[INFO] 강제 종료 요청(Ctrl+C) — 서버 종료 중...')
+            terminate_golang()
+            break
+
+        except Exception:
+            print('[ERROR] 서버 실행 중 예외 발생:')
+            traceback.print_exc()
+            terminate_golang()
+            print(f'[INFO] {restart_delay}초 후 재시작합니다...')
+            time.sleep(restart_delay)
+            restart_delay = min(max_delay, restart_delay * 2)
+
+    terminate_golang()
