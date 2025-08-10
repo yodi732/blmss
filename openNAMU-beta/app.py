@@ -254,8 +254,17 @@ with get_db_connect(init_mode = True) as conn:
     app.url_map.converters['regex'] = RegexConverter
 
     curs.execute(db_change('select data from other where name = "key"'))
-    sql_data = curs.fetchall()
-    app.secret_key = sql_data[0][0]
+    row = curs.fetchone()
+    if row and row[0]:
+        app.secret_key = row[0]
+    else:
+        # generate temporary secret if missing
+        k = load_random_key()
+        app.secret_key = k
+        try:
+            curs.execute(db_change('insert into other (name, data, coverage) values ("key", ?, "")'), [k])
+        except Exception:
+            pass
 
     # Init-DB_Data
 
@@ -331,6 +340,9 @@ with get_db_connect(init_mode = True) as conn:
     # Ensure golang_port exists to avoid KeyError when launching golang binary
     server_set.setdefault('golang_port', '3001')
     server_set['use_golang'] = False  # Force disable golang usage
+
+golang_process = None  # Disabled in Render; kept defined to avoid NameError in route defaults
+
 
 if platform.system() == 'Linux':
     if platform.machine() in ["AMD64", "x86_64"]:
@@ -1040,16 +1052,26 @@ app.route('/update', defaults = { 'golang_process' : golang_process }, methods =
 app.errorhandler(404)(main_func_error_404)
 
 def terminate_golang():
-    if golang_process.poll() is None:
-        golang_process.terminate()
-        try:
-            golang_process.wait(timeout = 5)
-        except subprocess.TimeoutExpired:
-            golang_process.kill()
+    global golang_process
+    try:
+        if golang_process is None:
+            return
+    except NameError:
+        return
+
+    try:
+        if hasattr(golang_process, 'poll') and golang_process.poll() is None:
+            golang_process.terminate()
             try:
                 golang_process.wait(timeout = 5)
-            except subprocess.TimeoutExpired:
-                print('Golang process not terminated properly.')
+            except Exception:
+                try:
+                    golang_process.kill()
+                    golang_process.wait(timeout = 5)
+                except Exception:
+                    print('Golang process not terminated properly.')
+    except Exception as e:
+        print(f'[WARN] terminate_golang error: {e}')
 
 def signal_handler(signal, frame):
     terminate_golang()
