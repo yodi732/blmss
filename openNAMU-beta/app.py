@@ -1152,6 +1152,22 @@ if __name__ == '__main__':
     import time
     import traceback
 
+# --- Render-proof safety enhancements ---
+# Safe retrieval for golang_port and skip Golang execution if not set
+try:
+    if 'config' in globals() and isinstance(config, dict):
+        golang_port = config.get('golang_port', None)
+    else:
+        golang_port = None
+except Exception:
+    golang_port = None
+
+if not golang_port:
+    globals()['golang_enabled'] = False
+    print("[INFO] Golang 기능 비활성화 상태이므로 모든 Golang 관련 실행 건너뜀")
+# --- End Render-proof enhancements ---
+
+
     restart_delay = 1      # 처음 재시작 대기 시간(초)
     max_delay = 60         # 최대 대기 시간(초)
 
