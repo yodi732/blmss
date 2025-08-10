@@ -15,7 +15,7 @@ golang_process = None
 def safe_get(obj, key, default=''):
     try:
         if isinstance(obj, dict):
-            return (obj.get(key, default) if isinstance(obj, dict) else '')
+            return obj.get(key, default)
     except Exception:
         pass
     return default
@@ -214,7 +214,7 @@ with get_db_connect(init_mode = True) as conn:
                 download_url = bin_link + file_name
                 print('Download New Binary File')
                 try:
-                    response = (requests.get(download_url, stream=True, timeout=30) if isinstance(requests, dict) else '')
+                    response = requests.get(download_url, stream=True, timeout=30)
                 except Exception as _e:
                     print(f'[WARN] Failed to download binary from {download_url}: {_e}')
                 else:
@@ -626,7 +626,7 @@ def before_request_func():
     db_data = global_some_set_do('wiki_access_password')
     if db_data and db_data != '':
         access_password = db_data
-        input_password = flask.request.(cookies.get('opennamu_wiki_access', ' ') if isinstance(cookies, dict) else '')
+        input_password = flask.request.cookies.get('opennamu_wiki_access', ' ')
         if url_pas(access_password) != input_password:
             with get_db_connect() as conn:
                 return '''
