@@ -258,6 +258,7 @@ with get_db_connect(init_mode = True) as conn:
     app.secret_key = sql_data[0][0]
 
     # Init-DB_Data
+
     server_set = {}
     server_set_var = get_init_set_list()
     server_set_env = {
@@ -268,49 +269,62 @@ with get_db_connect(init_mode = True) as conn:
         'markup' : os.getenv('NAMU_MARKUP'),
         'encode' : os.getenv('NAMU_ENCRYPT')
     }
-    for i in server_set_var:
-        curs.execute(db_change('select data from other where name = ?'), [i])
-        server_set_val = curs.fetchall()
-        if server_set_val:
-            server_set_val = server_set_val[0][0]
-        elif server_set_env[i] != None:
-            server_set_val = server_set_env[i]
 
-            curs.execute(db_change('insert into other (name, data, coverage) values (?, ?, "")'), [i, server_set_env[i]])
-        else:
-            if 'list' in server_set_var[i]:
-                print(server_set_var[i]['display'] + ' (' + server_set_var[i]['default'] + ') [' + ', '.join(server_set_var[i]['list']) + ']' + ' : ', end = '')
+    # Build server_set safely (don't modify while iterating)
+    for i, meta in server_set_var.items():
+        try:
+            curs.execute(db_change('select data from other where name = ?'), [i])
+            row = curs.fetchone()
+            if row and row[0] is not None:
+                server_set_val = row[0]
+            elif server_set_env.get(i) is not None:
+                server_set_val = server_set_env[i]
+                try:
+                    curs.execute(db_change('insert into other (name, data, coverage) values (?, ?, "")'), [i, server_set_env[i]])
+                except Exception:
+                    pass
             else:
-                # Non-interactive: prefer environment variable NAMU_<KEY>, then existing DB value, then default
+                # prefer environment NAMU_<KEY> over default
                 env_name = 'NAMU_' + i.upper()
                 env_val = os.getenv(env_name)
                 if env_val is not None:
                     server_set_val = env_val
                 else:
-                    # fallback to default defined in server_set_var
-                    server_set_val = server_set_var[i]['default']
-                # if select requirement, validate against list
-                if server_set_var[i].get('require') == 'select' and 'list' in server_set_var[i]:
-                    if server_set_val not in server_set_var[i]['list']:
-                        server_set_val = server_set_var[i]['default']
+                    # fallback to default from meta if available
+                    server_set_val = meta.get('default') if isinstance(meta, dict) else ''
+
                 try:
                     curs.execute(db_change('insert into other (name, data, coverage) values (?, ?, "")'), [i, server_set_val])
                 except Exception:
-                    # if insert fails (maybe row exists), try update
                     try:
                         curs.execute(db_change('update other set data = ? where name = ?'), [server_set_val, i])
                     except Exception:
                         pass
 
-        if isinstance(server_set_val, dict):
-            print(f"{server_set_val.get('display', '')} : {server_set_val}")
-        else:
-            print(f"{server_set_val} : {server_set_val}")
+            # safe print (if server_set_val is dict, use .get())
+            if isinstance(server_set_val, dict):
+                try:
+                    display_val = server_set_val.get('display', '')
+                except Exception:
+                    display_val = str(server_set_val)
+            else:
+                display_val = server_set_val
 
-        server_set[i] = server_set_val
+            print(f"{display_val} : {server_set_val}")
 
-for for_a in server_set:
-    global_some_set_do('setup_' + for_a, server_set[for_a])
+            server_set[i] = server_set_val
+        except Exception as _e:
+            print(f"[WARN] Error loading server_set key {i}: {_e}")
+            server_set[i] = meta.get('default') if isinstance(meta, dict) else ''
+
+    # Ensure keys expected later exist to avoid KeyError
+    server_set.setdefault('golang_port', '3001')
+    server_set.setdefault('host', '0.0.0.0')
+    server_set.setdefault('port', '3000')
+
+    # snapshot keys and propagate to global_some_set safely
+    for for_a in list(server_set.keys()):
+        global_some_set_do('setup_' + for_a, server_set[for_a])
 
 ###
 
