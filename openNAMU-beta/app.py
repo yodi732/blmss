@@ -316,6 +316,7 @@ for for_a in server_set:
 
     # Ensure golang_port exists to avoid KeyError when launching golang binary
     server_set.setdefault('golang_port', '3001')
+    server_set['use_golang'] = False  # Force disable golang usage
 
 if platform.system() == 'Linux':
     if platform.machine() in ["AMD64", "x86_64"]:
@@ -357,7 +358,9 @@ async def golang_process_check():
             print('Wait golang...')
             time.sleep(1)
 
-golang_process = subprocess.Popen(cmd)
+    # Golang execution disabled for Render deployment (binary missing)
+    print('Skipping Golang execution: main.amd64.bin not found or disabled.')
+    # golang_process = subprocess.Popen(cmd)
 
 try:
     loop = asyncio.get_running_loop()
