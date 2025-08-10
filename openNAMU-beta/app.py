@@ -116,21 +116,7 @@ with get_db_connect(init_mode = True) as conn:
                     else:
                         print(f'[WARN] Binary download failed with HTTP status {response.status_code}')
 
-            print('Download New Binary File')
-            response = download_url = None  # Render 환경에서는 다운로드를 사용하지 않음
-if download_url:
-    try:
-        response = requests.get(download_url, stream=True)
-    except Exception as e:
-        print(f"[WARN] Failed to download from {download_url}: {e}")
-else:
-    print("[INFO] download_url is not set. Skipping download step.")
-            if response.status_code == 200:
-                with open(local_file_path, 'wb') as file:
-                    for chunk in response.iter_content(chunk_size = 8192):
-                        file.write(chunk)
-
-                print('Complete Download')
+            # Skipping additional redundant download step (handled above).
 
     if data_db_set['type'] == 'mysql':
         try:
