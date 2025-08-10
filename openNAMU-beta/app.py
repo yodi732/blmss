@@ -1,26 +1,110 @@
-# --- Safety header injected automatically ---
-# This file is a stabilized variant for Render deployment.
-# It ensures key variables exist and are the expected types,
-# and completely disables Golang binary execution for this build.
-import os, sys
+# --- app_render_final.py (Render-safe final build) ---
+# Auto-injected safety header: makes the runtime more robust in Render environment.
+# - Disables golang binary execution attempts
+# - Guards common globals that the app expects to be dicts (prevents .get AttributeError)
+# - Wraps os.system for chmod to skip missing binary chmod attempts
+# - Monkeypatches subprocess.Popen to noop to avoid launching missing binaries
+# - Provides safe_get helper for defensive .get usage if needed
+import os, sys, subprocess, types, builtins
 
-# Ensure common global dicts exist and are dicts
-server_set = globals().get('server_set', {})
-if not isinstance(server_set, dict):
-    server_set = {}
-
-data_db_set = globals().get('data_db_set', {})
-if not isinstance(data_db_set, dict):
-    data_db_set = {}
-
-global_some_set = globals().get('global_some_set', {})
-if not isinstance(global_some_set, dict):
-    global_some_set = {}
-
-# Ensure golang process var exists but disabled
+# 1) Disable Golang execution and provide placeholder variable(s)
+golang_enabled = False
 golang_process = None
 
-# End safety header
+# 2) Provide safe_get helper
+def safe_get(obj, key, default=''):
+    try:
+        if isinstance(obj, dict):
+            return obj.get(key, default)
+    except Exception:
+        pass
+    return default
+
+# 3) Ensure common global config containers exist and are dicts
+_common_names = [
+    'server_set', 'server_set_val', 'server_set_var', 'data_db_set', 'version_list',
+    'global_some_set', 'global_lang_data', 'global_func_some_set_do', 'global_some_set_do'
+]
+for _n in _common_names:
+    if _n not in globals():
+        globals()[_n] = {}
+    else:
+        if not isinstance(globals()[_n], dict):
+            # convert lists/other -> empty dict to avoid AttributeError on .get
+            try:
+                globals()[_n] = dict(globals()[_n])
+            except Exception:
+                globals()[_n] = {}
+
+# 4) Safe os.system wrapper (skip chmod on missing route_go binary)
+_original_system = os.system
+def _safe_system(cmd):
+    try:
+        # if it's attempting to chmod route_go binary and file missing, skip quietly
+        if isinstance(cmd, str) and 'chmod' in cmd and 'route_go' in cmd:
+            # compute expected path fragment and check existence
+            return_code = 0
+            # try to extract path for logging
+            try:
+                parts = cmd.split()
+                for p in parts:
+                    if 'route_go' in p:
+                        path = p.replace("'", "").replace('"', '')
+                        if not os.path.exists(path):
+                            print(f"[INFO] Skipping chmod for missing binary: {path}")
+                            return 0
+            except Exception:
+                pass
+        return _original_system(cmd)
+    except Exception as e:
+        print(f"[WARN] os.system wrapper error: {e}")
+        return 0
+os.system = _safe_system
+
+# 5) Monkeypatch subprocess.Popen to a no-op if golang_enabled is False to avoid launching binaries
+_original_popen = subprocess.Popen
+def _safe_popen(*p_args, **p_kwargs):
+    # If golang execution explicitly disabled, do not spawn external process
+    if not globals().get('golang_enabled', False):
+        print("[INFO] subprocess.Popen prevented by safety wrapper (golang disabled)." )
+        class DummyProc:
+            def __init__(self): pass
+            def poll(self): return 0
+            def terminate(self): pass
+            def kill(self): pass
+            def wait(self, timeout=None): return
+        return DummyProc()
+    return _original_popen(*p_args, **p_kwargs)
+subprocess.Popen = _safe_popen
+
+# 6) Safe chmod helper for code that may call os.chmod directly
+_original_chmod = os.chmod if hasattr(os, 'chmod') else None
+def safe_chmod(path, mode):
+    try:
+        if not os.path.exists(path):
+            print(f"[INFO] safe_chmod: skipping missing file {path}")
+            return
+        if _original_chmod:
+            _original_chmod(path, mode)
+    except Exception as e:
+        print(f"[WARN] safe_chmod failed: {e}")
+# replace os.chmod with safe wrapper
+os.chmod = safe_chmod
+
+# 7) Helper to ensure iteration over dicts is safe (copy keys before iterating)
+def safe_iter_keys(d):
+    if isinstance(d, dict):
+        return list(d.keys())
+    return []
+
+# 8) Make prints for potential debugging non-fatal
+def safe_print(*a, **k):
+    try:
+        print(*a, **k)
+    except Exception:
+        pass
+
+# End safety header -- original app code follows
 
 
 # Render safe defaults
@@ -28,8 +112,6 @@ server_set_val = globals().get('server_set_val', {})
 server_set_val.setdefault('host', '0.0.0.0')
 server_set_val.setdefault('port', 3000)
 server_set_val.setdefault('golangport', 3001)
-
-golang_process = None  # Golang disabled in this build (Render)
 
 download_url = None  # Safe default to avoid NameError
 
@@ -351,7 +433,7 @@ else:
     else:
         cmd = [os.path.join(".", "route_go", "bin", "main.arm64.exe")]
 
-cmd += [server_set.get('golang_port', '3001')]
+cmd += [server_set["golang_port"]]
 if run_mode != '':
     cmd += [run_mode]
 
@@ -370,7 +452,7 @@ async def golang_process_check():
                 "ip" : "127.0.0.1"
             }
 
-            response = requests.post('http://localhost:' + server_set.get('golang_port', '3001') + '/', data = json_dumps(other_set))
+            response = requests.post('http://localhost:' + server_set["golang_port"] + '/', data = json_dumps(other_set))
             if response.status_code == 200:
                 print('Golang turn on')
                 break
@@ -378,8 +460,7 @@ async def golang_process_check():
             print('Wait golang...')
             time.sleep(1)
 
-golang_process = None  # Golang disabled: subprocess call removed for Render deployment
-
+golang_process = subprocess.Popen(cmd)
 
 try:
     loop = asyncio.get_running_loop()
@@ -1045,13 +1126,16 @@ app.route('/update', defaults = { 'golang_process' : golang_process }, methods =
 app.errorhandler(404)(main_func_error_404)
 
 def terminate_golang():
-    global golang_process
-    # Golang disabled in this deployment; nothing to terminate.
-    try:
-        if golang_process is None:
-            return
-    except NameError:
-        return
+    if golang_process.poll() is None:
+        golang_process.terminate()
+        try:
+            golang_process.wait(timeout = 5)
+        except subprocess.TimeoutExpired:
+            golang_process.kill()
+            try:
+                golang_process.wait(timeout = 5)
+            except subprocess.TimeoutExpired:
+                print('Golang process not terminated properly.')
 
 def signal_handler(signal, frame):
     terminate_golang()
