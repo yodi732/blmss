@@ -57,7 +57,7 @@ def load_version_info(path='version.json'):
 # --- end loader ---
 
 version_list = load_version_info()
-    
+
 # Init-DB
 data_db_set = class_check_json()
 do_db_set(data_db_set)
@@ -115,14 +115,7 @@ with get_db_connect(init_mode = True) as conn:
                         print(f'[WARN] Binary download failed with HTTP status {response.status_code}')
 
             print('Download New Binary File')
-            response = download_url = None  # Render 환경에서는 다운로드를 사용하지 않음
-if download_url:
-    try:
-        response = requests.get(download_url, stream=True)
-    except Exception as e:
-        print(f"[WARN] Failed to download from {download_url}: {e}")
-else:
-    print("[INFO] download_url is not set. Skipping download step.")
+            response = requests.get(download_url, stream = True)
             if response.status_code == 200:
                 with open(local_file_path, 'wb') as file:
                     for chunk in response.iter_content(chunk_size = 8192):
@@ -311,7 +304,7 @@ else:
         print(server_set_var[i]['display'] + ' : ' + server_set_val)
 
         server_set[i] = server_set_val
-        
+
 for for_a in server_set:
     global_some_set_do('setup_' + for_a, server_set[for_a])
 
@@ -329,7 +322,7 @@ else:
         cmd = [os.path.join(".", "route_go", "bin", "main.amd64.exe")]
     else:
         cmd = [os.path.join(".", "route_go", "bin", "main.arm64.exe")]
-        
+
 cmd += [server_set["golang_port"]]
 if run_mode != '':
     cmd += [run_mode]
@@ -372,7 +365,7 @@ except RuntimeError:
 def back_up(data_db_set):
     with get_db_connect() as conn:
         curs = conn.cursor()
-    
+
         try:
             curs.execute(db_change('select data from other where name = "back_up"'))
             back_time = curs.fetchall()
@@ -394,13 +387,13 @@ def back_up(data_db_set):
 
                     file_dir = os.path.split(back_up_where)[0]
                     file_dir = '.' if file_dir == '' else file_dir
-                    
+
                     file_name = os.path.split(back_up_where)[1]
                     file_name = re.sub(r'\.db$', '_[0-9]{14}.db', file_name)
 
                     backup_file = [for_a for for_a in os.listdir(file_dir) if re.search('^' + file_name + '$', for_a)]
                     backup_file = sorted(backup_file)
-                    
+
                     if len(backup_file) >= back_up_count:
                         remove_dir = os.path.join(file_dir, backup_file[0])
                         os.remove(remove_dir)
@@ -409,7 +402,7 @@ def back_up(data_db_set):
                 now_time = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
                 new_file_name = re.sub(r'\.db$', '_' + now_time + '.db', back_up_where)
                 shutil.copyfile(
-                    data_db_set['name'] + '.db', 
+                    data_db_set['name'] + '.db',
                     new_file_name
                 )
 
@@ -429,10 +422,10 @@ def back_up(data_db_set):
 async def do_every_day():
     with get_db_connect() as conn:
         curs = conn.cursor()
-        
+
         # 오늘의 날짜 불러오기
         time_today = get_time().split()[0]
-    
+
         # vote 관리
         curs.execute(db_change('select id, type from vote where type = "open" or type = "n_open"'))
         for for_a in curs.fetchall():
@@ -454,7 +447,7 @@ async def do_every_day():
             if time_today > time_db:
                 curs.execute(db_change("update user_set set data = 'user' where id = ? and name = 'acl'"), [for_a[0]])
                 curs.execute(db_change('delete from user_set where name = "auth_date" and id = ?'), [for_a[0]])
-                
+
         # acl 관리
         curs.execute(db_change("select doc_name, doc_rev, set_data from data_set where set_name = 'acl_date'"))
         db_data = curs.fetchall()
@@ -463,27 +456,27 @@ async def do_every_day():
             if time_today > time_db:
                 curs.execute(db_change("delete from acl where title = ? and type = ?"), [for_a[0], for_a[1]])
                 curs.execute(db_change("delete from data_set where doc_name = ? and doc_rev = ? and set_name = 'acl_date'"), [for_a[0], for_a[1]])
-                
+
         # ua 관리
         curs.execute(db_change('select data from other where name = "ua_expiration_date"'))
         db_data = curs.fetchall()
         if db_data and db_data[0][0] != '':
             time_db = int(number_check(db_data[0][0]))
-            
+
             time_calc = datetime.date.today() - datetime.timedelta(days = time_db)
             time_calc = time_calc.strftime('%Y-%m-%d %H:%M:%S')
-            
+
             curs.execute(db_change("delete from ua_d where today < ?"), [time_calc])
-            
+
         # auth history 관리
         curs.execute(db_change('select data from other where name = "auth_history_expiration_date"'))
         db_data = curs.fetchall()
         if db_data and db_data[0][0] != '':
             time_db = int(number_check(db_data[0][0]))
-            
+
             time_calc = datetime.date.today() - datetime.timedelta(days = time_db)
             time_calc = time_calc.strftime('%Y-%m-%d %H:%M:%S')
-            
+
             curs.execute(db_change("delete from re_admin where time < ?"), [time_calc])
 
         # 사이트맵 생성 관리
