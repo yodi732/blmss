@@ -1043,6 +1043,9 @@ if __name__ == '__main__':
     import time
     while True:
         try:
+    import time
+    while True:
+        try:
     try:
     try:
     try:
@@ -1062,6 +1065,10 @@ if __name__ == '__main__':
     except Exception as e:
         print(f'[ERROR] Unhandled exception during startup: {e}')
         import time; time.sleep(3)
+        except Exception as e:
+            print(f'[ERROR] Unhandled exception during runtime: {e}')
+            time.sleep(3)
+            print('[INFO] Restarting server...')
         except Exception as e:
             print(f'[ERROR] Unhandled exception during runtime: {e}')
             time.sleep(3)
