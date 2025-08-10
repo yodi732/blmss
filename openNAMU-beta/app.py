@@ -302,7 +302,10 @@ with get_db_connect(init_mode = True) as conn:
                     except Exception:
                         pass
 
-print(f"{server_set_val.get('display', '')} : {server_set_val}")
+if isinstance(server_set_val, dict):
+    print(f"{server_set_val.get('display', '')} : {server_set_val}")
+else:
+    print(f"{server_set_val} : {server_set_val}")
 
 server_set[i] = server_set_val
 
