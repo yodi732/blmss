@@ -422,15 +422,12 @@ with get_db_connect(init_mode = True) as conn:
     server_set_var = get_init_set_list()
     server_set_env = {
         'host' : os.getenv('NAMU_HOST'),
-        'golang_port' : os.getenv('NAMU_GOLANGPORT') or '3001',
+        'golang_port' : os.getenv('NAMU_GOLANGPORT'),
         'port' : os.getenv('NAMU_PORT'),
         'language' : os.getenv('NAMU_LANG'),
         'markup' : os.getenv('NAMU_MARKUP'),
         'encode' : os.getenv('NAMU_ENCRYPT')
     }
-    # Ensure golang_port is always set
-    if not server_set_env.get('golang_port'):
-        server_set_env['golang_port'] = '3001'
     for i in server_set_var:
         curs.execute(db_change('select data from other where name = ?'), [i])
         server_set_val = curs.fetchall()
