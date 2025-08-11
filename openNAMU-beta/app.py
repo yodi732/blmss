@@ -471,29 +471,16 @@ for for_a in server_set:
 
 ###
 
-if platform.system() == 'Linux':
-    if platform.machine() in ["AMD64", "x86_64"]:
-        cmd = [os.path.join(".", "route_go", "bin", "main.amd64.bin")]
-    else:
-        cmd = [os.path.join(".", "route_go", "bin", "main.arm64.bin")]
-elif platform.system() == 'Darwin':
-    cmd = [os.path.join(".", "route_go", "bin", "main.mac.arm64.bin")]
-else:
-    if platform.machine() in ["AMD64", "x86_64"]:
-        cmd = [os.path.join(".", "route_go", "bin", "main.amd64.exe")]
-    else:
-        cmd = [os.path.join(".", "route_go", "bin", "main.arm64.exe")]
+# --- Golang execution block disabled for Render ---
+# --- Golang execution block disabled for Render ---
+# --- End of disabled Golang block ---
 
-cmd += [server_set["golang_port"]]
+# cmd += [server_set["golang_port"]]  # Disabled: golang_port not used in Render
 if run_mode != '':
     cmd += [run_mode]
 
-async def golang_process_check():
-    while True:
-        try:
-            other_set_temp = {}
-            for k in data_db_set:
-                other_set_temp["db_" + k] = data_db_set[k]
+# --- Golang execution block disabled for Render ---
+# --- End of disabled Golang block ---
 
             other_set = {
                 "url" : "test",
@@ -503,7 +490,7 @@ async def golang_process_check():
                 "ip" : "127.0.0.1"
             }
 
-            response = requests.post('http://localhost:' + server_set["golang_port"] + '/', data = json_dumps(other_set))
+# response = requests.post('http://localhost:' + server_set["golang_port"] + '/', data = json_dumps(other_set))  # Disabled: golang_port not used in Render
             if response.status_code == 200:
                 print('Golang turn on')
                 break
@@ -511,15 +498,14 @@ async def golang_process_check():
             print('Wait golang...')
             time.sleep(1)
 
-golang_process = subprocess.Popen(cmd)
+# --- Golang execution block disabled for Render ---
+# --- End of disabled Golang block ---
 
 try:
     loop = asyncio.get_running_loop()
-    loop.create_task(golang_process_check())
-except RuntimeError:
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(golang_process_check())
+# --- Golang execution block disabled for Render ---
+# --- Golang execution block disabled for Render ---
+# --- End of disabled Golang block ---
 
 ###
 
