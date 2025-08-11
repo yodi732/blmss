@@ -1,6 +1,15 @@
 # --- AUTO-INJECTED RENDER-SAFE HEADER ---
 # 방어용 헤더: 기본 전역 dict 보장, safe_get, safe_json_load, os/subprocess wrappers
 import os, sys, json, subprocess, types
+
+import os
+# === Render 환경 최적화 설정 ===
+DB_TYPE = os.environ.get('NAMU_DB_TYPE', 'sqlite')
+DB_NAME = os.environ.get('NAMU_DB', 'data')
+HOST = os.environ.get('NAMU_HOST', '0.0.0.0')
+PORT = int(os.environ.get('NAMU_PORT', '5000'))
+DEBUG_MODE = os.environ.get('NAMU_DEBUG', '0') == '1'
+
 try:
     golang_enabled
 except NameError:
@@ -1175,10 +1184,6 @@ atexit.register(terminate_golang)
 
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for = 1, x_proto = 1)
 
-if __name__ == '__main__':
-    import time
-    import traceback
-
     restart_delay = 1      # 처음 재시작 대기 시간(초)
     max_delay = 60         # 최대 대기 시간(초)
 
@@ -1210,3 +1215,14 @@ if __name__ == '__main__':
             restart_delay = min(max_delay, restart_delay * 2)
 
     terminate_golang()
+
+if __name__ == '__main__':
+    from hypercorn.asyncio import serve
+    from hypercorn.config import Config
+    import asyncio
+
+    config = Config()
+    config.bind = [f"{HOST}:{PORT}"]
+    config.debug = DEBUG_MODE
+
+    asyncio.run(serve(app, config))
