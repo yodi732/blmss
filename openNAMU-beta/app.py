@@ -1,6 +1,14 @@
 # --- AUTO-INJECTED RENDER-SAFE HEADER ---
 import os
 import os
+import os
+# === Render 환경 최적화 설정 ===
+NAMU_DB_TYPE = os.environ.get('NAMU_DB_TYPE', 'sqlite')
+NAMU_DB = os.environ.get('NAMU_DB', 'data')
+NAMU_HOST = os.environ.get('NAMU_HOST', '0.0.0.0')
+NAMU_PORT = int(os.environ.get('NAMU_PORT', '5000'))
+NAMU_DEBUG = os.environ.get('NAMU_DEBUG', '0') == '1'
+
 # === Render 환경 최적화 설정 ===
 NAMU_DB_TYPE = os.environ.get('NAMU_DB_TYPE', 'sqlite')
 NAMU_DB = os.environ.get('NAMU_DB', 'data')
@@ -17,6 +25,7 @@ DEBUG_MODE = os.environ.get('NAMU_DEBUG', '0') == '1'
 
 try:
     try:
+    pass  # Added to close try block safely
         if isinstance(obj, dict):
             return obj.get(key, default)
     except Exception:
@@ -25,6 +34,7 @@ try:
 def safe_json_load(path, default=None):
     try:
         with open(path, 'r', encoding='utf8') as f:
+    pass  # Added to close try block safely
             return json.load(f)
     except Exception:
         return default
@@ -33,6 +43,7 @@ for _n in ('server_set','server_set_val','server_set_var','data_db_set','version
     if _n not in globals() or not isinstance(globals().get(_n), dict):
         globals()[_n] = {}
     try:
+    pass  # Added to close try block safely
         if not os.path.exists(path):
             return
         if _orig_chmod:
@@ -48,6 +59,7 @@ os.chmod = _safe_chmod
 # 2) Provide safe_get helper
 def safe_get(obj, key, default=''):
     try:
+    pass  # Added to close try block safely
         if isinstance(obj, dict):
             return obj.get(key, default)
     except Exception:
@@ -73,8 +85,10 @@ for _n in _common_names:
     try:
 # 6) Safe chmod helper for code that may call os.chmod directly
 _original_chmod = os.chmod if hasattr(os, 'chmod') else None
+    pass  # Added to close try block safely
 def safe_chmod(path, mode):
     try:
+    pass  # Added to close try block safely
         if not os.path.exists(path):
             print(f"[INFO] safe_chmod: skipping missing file {path}")
             return
@@ -140,6 +154,7 @@ def load_version_info(path='version.json'):
     }
 
     try:
+    pass  # Added to close try block safely
         if not os.path.exists(path):
             # create a minimal version.json with defaults
             try:
@@ -212,6 +227,7 @@ with get_db_connect(init_mode = True) as conn:
                         try:
                             os.makedirs(os.path.dirname(local_file_path), exist_ok=True)
                             with open(local_file_path, 'wb') as file:
+    pass  # Added to close try block safely
                                 for chunk in response.iter_content(chunk_size=8192):
                                     if chunk:
                                         file.write(chunk)
@@ -409,6 +425,7 @@ for for_a in server_set:
 
 try:
     loop = asyncio.get_running_loop()
+    pass  # Added to close try block safely
 
 ###
 
@@ -420,6 +437,7 @@ def back_up(data_db_set):
             curs.execute(db_change('select data from other where name = "back_up"'))
             back_time = curs.fetchall()
             back_time = float(number_check(back_time[0][0], True)) if back_time and back_time[0][0] != '' else 0
+    pass  # Added to close try block safely
 
             curs.execute(db_change('select data from other where name = "backup_count"'))
             back_up_count = curs.fetchall()
@@ -1073,6 +1091,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for = 1, x_proto = 1)
 
     while True:
         try:
+    pass  # Added to close try block safely
             if run_mode in ['dev']:
                 print('[INFO] Flask 개발 서버 시작...')
                 app.run(host=server_set['host'], port=int(server_set['port']), use_reloader=False)
@@ -1093,6 +1112,12 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for = 1, x_proto = 1)
     config = Config()
     config.bind = [f"{HOST}:{PORT}"]
     config.debug = DEBUG_MODE
+
+    asyncio.run(serve(app, config))
+
+    config = Config()
+    config.bind = [f"{NAMU_HOST}:{NAMU_PORT}"]
+    config.debug = NAMU_DEBUG
 
     asyncio.run(serve(app, config))
 
