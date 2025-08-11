@@ -1,8 +1,13 @@
 # --- AUTO-INJECTED RENDER-SAFE HEADER ---
-# 방어용 헤더: 기본 전역 dict 보장, safe_get, safe_json_load, os/subprocess wrappers
-import os, sys, json, subprocess, types
-
 import os
+import os
+# === Render 환경 최적화 설정 ===
+NAMU_DB_TYPE = os.environ.get('NAMU_DB_TYPE', 'sqlite')
+NAMU_DB = os.environ.get('NAMU_DB', 'data')
+NAMU_HOST = os.environ.get('NAMU_HOST', '0.0.0.0')
+NAMU_PORT = int(os.environ.get('NAMU_PORT', '5000'))
+NAMU_DEBUG = os.environ.get('NAMU_DEBUG', '0') == '1'
+
 # === Render 환경 최적화 설정 ===
 DB_TYPE = os.environ.get('NAMU_DB_TYPE', 'sqlite')
 DB_NAME = os.environ.get('NAMU_DB', 'data')
@@ -11,11 +16,6 @@ PORT = int(os.environ.get('NAMU_PORT', '5000'))
 DEBUG_MODE = os.environ.get('NAMU_DEBUG', '0') == '1'
 
 try:
-    golang_enabled
-except NameError:
-    golang_enabled = False
-# safe helpers
-def safe_get(obj, key, default=None):
     try:
         if isinstance(obj, dict):
             return obj.get(key, default)
@@ -32,21 +32,6 @@ def safe_json_load(path, default=None):
 for _n in ('server_set','server_set_val','server_set_var','data_db_set','version_list','global_some_set','global_lang_data'):
     if _n not in globals() or not isinstance(globals().get(_n), dict):
         globals()[_n] = {}
-# wrap subprocess.Popen to no-op when golang disabled to avoid crashes on missing binaries
-_orig_popen = subprocess.Popen
-def _safe_popen(*a, **k):
-    if not globals().get('golang_enabled', False):
-        class _Dummy:
-            def poll(self): return 0
-            def terminate(self): pass
-            def kill(self): pass
-            def wait(self, timeout=None): return
-        return _Dummy()
-    return _orig_popen(*a, **k)
-subprocess.Popen = _safe_popen
-# safe os.chmod wrapper
-_orig_chmod = getattr(os, 'chmod', None)
-def _safe_chmod(path, mode):
     try:
         if not os.path.exists(path):
             return
@@ -60,17 +45,6 @@ os.chmod = _safe_chmod
 
 # --- app_render_final.py (Render-safe final build) ---
 # Auto-injected safety header: makes the runtime more robust in Render environment.
-# - Disables golang binary execution attempts
-# - Guards common globals that the app expects to be dicts (prevents .get AttributeError)
-# - Wraps os.system for chmod to skip missing binary chmod attempts
-# - Monkeypatches subprocess.Popen to noop to avoid launching missing binaries
-# - Provides safe_get helper for defensive .get usage if needed
-import os, sys, subprocess, types, builtins
-
-# 1) Disable Golang execution and provide placeholder variable(s)
-golang_enabled = False
-golang_process = None
-
 # 2) Provide safe_get helper
 def safe_get(obj, key, default=''):
     try:
@@ -96,47 +70,7 @@ for _n in _common_names:
             except Exception:
                 globals()[_n] = {}
 
-# 4) Safe os.system wrapper (skip chmod on missing route_go binary)
-_original_system = os.system
-def _safe_system(cmd):
     try:
-        # if it's attempting to chmod route_go binary and file missing, skip quietly
-        if isinstance(cmd, str) and 'chmod' in cmd and 'route_go' in cmd:
-            # compute expected path fragment and check existence
-            return_code = 0
-            # try to extract path for logging
-            try:
-                parts = cmd.split()
-                for p in parts:
-                    if 'route_go' in p:
-                        path = p.replace("'", "").replace('"', '')
-                        if not os.path.exists(path):
-                            print(f"[INFO] Skipping chmod for missing binary: {path}")
-                            return 0
-            except Exception:
-                pass
-        return _original_system(cmd)
-    except Exception as e:
-        print(f"[WARN] os.system wrapper error: {e}")
-        return 0
-os.system = _safe_system
-
-# 5) Monkeypatch subprocess.Popen to a no-op if golang_enabled is False to avoid launching binaries
-_original_popen = subprocess.Popen
-def _safe_popen(*p_args, **p_kwargs):
-    # If golang execution explicitly disabled, do not spawn external process
-    if not globals().get('golang_enabled', False):
-        print("[INFO] subprocess.Popen prevented by safety wrapper (golang disabled)." )
-        class DummyProc:
-            def __init__(self): pass
-            def poll(self): return 0
-            def terminate(self): pass
-            def kill(self): pass
-            def wait(self, timeout=None): return
-        return DummyProc()
-    return _original_popen(*p_args, **p_kwargs)
-subprocess.Popen = _safe_popen
-
 # 6) Safe chmod helper for code that may call os.chmod directly
 _original_chmod = os.chmod if hasattr(os, 'chmod') else None
 def safe_chmod(path, mode):
@@ -171,8 +105,6 @@ def safe_print(*a, **k):
 server_set_val = globals().get('server_set_val', {})
 server_set_val.setdefault('host', '0.0.0.0')
 server_set_val.setdefault('port', 3000)
-server_set_val.setdefault('golangport', 3001)
-
 download_url = None  # Safe default to avoid NameError
 
 # Init
@@ -260,8 +192,6 @@ with get_db_connect(init_mode = True) as conn:
 
     if run_mode != 'dev':
         file_name = linux_exe_chmod()
-        local_file_path = os.path.join("route_go", "bin", file_name)
-
         if not (setup_tool == "normal" and os.path.exists(local_file_path)):
             if os.path.exists(local_file_path):
                 print('Remove Old Binary')
@@ -431,20 +361,6 @@ with get_db_connect(init_mode = True) as conn:
     server_set_var = get_init_set_list()
     server_set_env = {
         'host' : os.getenv('NAMU_HOST'),
-        'golang_port' : os.getenv('NAMU_GOLANGPORT'),
-        'port' : os.getenv('NAMU_PORT'),
-        'language' : os.getenv('NAMU_LANG'),
-        'markup' : os.getenv('NAMU_MARKUP'),
-        'encode' : os.getenv('NAMU_ENCRYPT')
-    }
-    for i in server_set_var:
-        curs.execute(db_change('select data from other where name = ?'), [i])
-        server_set_val = curs.fetchall()
-        if server_set_val:
-            server_set_val = server_set_val[0][0]
-        elif server_set_env[i] != None:
-            server_set_val = server_set_env[i]
-
             curs.execute(db_change('insert into other (name, data, coverage) values (?, ?, "")'), [i, server_set_env[i]])
         else:
             if 'list' in server_set_var[i]:
@@ -481,10 +397,6 @@ for for_a in server_set:
 ###
 
 
-# cmd += [server_set["golang_port"]]  # Disabled: golang_port not used in Render
-if run_mode != '':
-    cmd += [run_mode]
-
 
             other_set = {
                 "url" : "test",
@@ -493,14 +405,6 @@ if run_mode != '':
                 "cookie" : "",
                 "ip" : "127.0.0.1"
             }
-
-# response = requests.post('http://localhost:' + server_set["golang_port"] + '/', data = json_dumps(other_set))  # Disabled: golang_port not used in Render
-            if response.status_code == 200:
-                print('Golang turn on')
-                break
-        except requests.ConnectionError:
-            print('Wait golang...')
-            time.sleep(1)
 
 
 try:
@@ -1156,31 +1060,11 @@ app.route('/image/<path:name>')(main_view_image)
 app.route('/<regex("[^.]+\\.(?:txt|xml|ico)"):data>')(main_view_file)
 
 app.route('/shutdown', methods = ['POST', 'GET'])(main_sys_shutdown)
-app.route('/restart', defaults = { 'golang_process' : golang_process }, methods = ['POST', 'GET'])(main_sys_restart)
-app.route('/update', defaults = { 'golang_process' : golang_process }, methods = ['POST', 'GET'])(main_sys_update)
-
 app.errorhandler(404)(main_func_error_404)
 
-def terminate_golang():
-    if golang_process.poll() is None:
-        golang_process.terminate()
-        try:
-            golang_process.wait(timeout = 5)
-        except subprocess.TimeoutExpired:
-            golang_process.kill()
-            try:
-                golang_process.wait(timeout = 5)
-            except subprocess.TimeoutExpired:
-                print('Golang process not terminated properly.')
-
 def signal_handler(signal, frame):
-    terminate_golang()
-    os._exit(0)
-
 signal.signal(signal.SIGTERM, signal_handler)
 signal.signal(signal.SIGINT, signal_handler)
-
-atexit.register(terminate_golang)
 
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for = 1, x_proto = 1)
 
@@ -1203,26 +1087,22 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for = 1, x_proto = 1)
 
         except KeyboardInterrupt:
             print('[INFO] 강제 종료 요청(Ctrl+C) — 서버 종료 중...')
-            terminate_golang()
-            break
-
         except Exception:
             print('[ERROR] 서버 실행 중 예외 발생:')
             traceback.print_exc()
-            terminate_golang()
-            print(f'[INFO] {restart_delay}초 후 재시작합니다...')
-            time.sleep(restart_delay)
-            restart_delay = min(max_delay, restart_delay * 2)
+    config = Config()
+    config.bind = [f"{HOST}:{PORT}"]
+    config.debug = DEBUG_MODE
 
-    terminate_golang()
+    asyncio.run(serve(app, config))
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from hypercorn.asyncio import serve
     from hypercorn.config import Config
     import asyncio
 
     config = Config()
-    config.bind = [f"{HOST}:{PORT}"]
-    config.debug = DEBUG_MODE
+    config.bind = [f"{NAMU_HOST}:{NAMU_PORT}"]
+    config.debug = NAMU_DEBUG
 
     asyncio.run(serve(app, config))
