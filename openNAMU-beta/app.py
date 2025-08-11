@@ -471,18 +471,11 @@ for for_a in server_set:
 
 ###
 
-# --- Golang execution block disabled for Render ---
-# --- Golang execution block disabled for Render ---
-pass  # Golang block removed for Render
-# --- End of disabled Golang block ---
 
 # cmd += [server_set["golang_port"]]  # Disabled: golang_port not used in Render
 if run_mode != '':
     cmd += [run_mode]
 
-# --- Golang execution block disabled for Render ---
-pass  # Golang block removed for Render
-# --- End of disabled Golang block ---
 
             other_set = {
                 "url" : "test",
@@ -500,16 +493,9 @@ pass  # Golang block removed for Render
             print('Wait golang...')
             time.sleep(1)
 
-# --- Golang execution block disabled for Render ---
-pass  # Golang block removed for Render
-# --- End of disabled Golang block ---
 
 try:
     loop = asyncio.get_running_loop()
-# --- Golang execution block disabled for Render ---
-# --- Golang execution block disabled for Render ---
-pass  # Golang block removed for Render
-# --- End of disabled Golang block ---
 
 ###
 
